@@ -8,7 +8,6 @@ class Settings(BaseSettings):
     
     # Database
     DB_PATH: str = "./rpg_game.db"
-    DATABASE_URL: str = None
     
     # Game Settings
     MAX_LEVEL: int = 100
@@ -31,9 +30,9 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     
-    def __post_init__(self):
-        if not self.DATABASE_URL:
-            self.DATABASE_URL = f"sqlite+aiosqlite:///{self.DB_PATH}"
+    @property
+    def DATABASE_URL(self) -> str:
+        return f"sqlite+aiosqlite:///{self.DB_PATH}"
     
     class Config:
         env_file = ".env"
@@ -42,10 +41,6 @@ class Settings(BaseSettings):
 # Load settings
 ROOT_DIR = Path(__file__).parent.parent
 settings = Settings(_env_file=ROOT_DIR / '.env')
-
-# Ensure DATABASE_URL is set correctly
-if not settings.DATABASE_URL:
-    settings.DATABASE_URL = f"sqlite+aiosqlite:///{settings.DB_PATH}"
 
 # Game Constants
 class GameConstants:
