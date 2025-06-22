@@ -34,7 +34,7 @@ class BotTester:
     
     def run_tests(self):
         """Run all tests"""
-        logger.info("Starting Telegram RPG Bot v2.0 tests")
+        logger.info("Starting Telegram RPG Bot v3.0 tests")
         
         # Test bot process
         self.test_bot_process()
@@ -46,10 +46,11 @@ class BotTester:
         # Test bot API
         self.test_bot_api()
         
-        # Test new shop and inventory system
-        self.test_item_database()
-        self.test_shop_service()
-        self.test_inventory_service()
+        # Test new v3.0 features
+        self.test_monster_system()
+        self.test_interactive_battle_system()
+        self.test_kingdom_wars_system()
+        self.test_war_scheduler()
         
         # Check logs for errors
         self.check_log_file()
