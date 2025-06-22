@@ -3,6 +3,7 @@
 Initialize game data - items, equipment, etc.
 """
 import asyncio
+from sqlalchemy import select, func, text
 from config.database import AsyncSessionLocal
 from models.item import Item, ItemTypeEnum, RarityEnum
 
@@ -10,7 +11,7 @@ async def init_game_data():
     """Initialize basic game items"""
     async with AsyncSessionLocal() as session:
         # Check if items already exist
-        existing_items = await session.execute("SELECT COUNT(*) FROM items")
+        existing_items = await session.execute(select(func.count(Item.id)))
         if existing_items.scalar() > 0:
             print("Items already exist, skipping initialization")
             return
