@@ -96,63 +96,70 @@ class BotTester:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            # Check users table
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
-            if cursor.fetchone():
-                logger.info("✅ Users table exists")
-                self.tests_passed += 1
-            else:
-                logger.error("❌ Users table not found")
-                self.tests_failed += 1
+            # Check all required tables
+            required_tables = [
+                'users', 'battles', 'items', 'user_items',
+                'monsters', 'interactive_battles', 'kingdom_wars', 'war_participations'
+            ]
             
-            # Check battles table
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='battles'")
-            if cursor.fetchone():
-                logger.info("✅ Battles table exists")
-                self.tests_passed += 1
-            else:
-                logger.error("❌ Battles table not found")
-                self.tests_failed += 1
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            existing_tables = [row[0] for row in cursor.fetchall()]
             
-            # Check items table (NEW)
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='items'")
-            if cursor.fetchone():
-                logger.info("✅ Items table exists")
-                self.tests_passed += 1
-            else:
-                logger.error("❌ Items table not found")
-                self.tests_failed += 1
-            
-            # Check user_items table (NEW)
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_items'")
-            if cursor.fetchone():
-                logger.info("✅ User_items table exists")
-                self.tests_passed += 1
-            else:
-                logger.error("❌ User_items table not found")
-                self.tests_failed += 1
-            
-            # Check table structure
-            try:
-                cursor.execute("PRAGMA table_info(users)")
-                columns = [row[1] for row in cursor.fetchall()]
-                required_columns = ['id', 'name', 'gender', 'kingdom', 'level', 'experience', 
-                                   'strength', 'armor', 'hp', 'agility', 'mana']
-                
-                if all(col in columns for col in required_columns):
-                    logger.info("✅ Users table has correct structure")
+            for table in required_tables:
+                if table in existing_tables:
+                    logger.info(f"✅ {table} table exists")
                     self.tests_passed += 1
                 else:
-                    missing = [col for col in required_columns if col not in columns]
-                    logger.error(f"❌ Users table missing columns: {missing}")
+                    logger.error(f"❌ {table} table not found")
                     self.tests_failed += 1
-            except Exception as e:
-                logger.error(f"❌ Error checking users table structure: {e}")
-                self.tests_failed += 1
+            
+            # Check v3.0 specific tables structure
+            self.check_table_structure(cursor, 'monsters', [
+                'id', 'name', 'description', 'monster_type', 'level', 
+                'strength', 'armor', 'hp', 'agility', 'exp_reward', 'money_reward'
+            ])
+            
+            self.check_table_structure(cursor, 'interactive_battles', [
+                'id', 'mode', 'phase', 'player1_id', 'player2_id', 'monster_data',
+                'current_round', 'max_rounds', 'player1_hp', 'player1_mana',
+                'player2_hp', 'player2_mana', 'monster_hp', 'player1_attack_choice',
+                'player1_dodge_choice', 'player2_attack_choice', 'player2_dodge_choice',
+                'round_start_time', 'round_timeout', 'battle_log', 'winner_id',
+                'exp_gained', 'money_gained', 'created_at', 'finished_at'
+            ])
+            
+            self.check_table_structure(cursor, 'kingdom_wars', [
+                'id', 'war_type', 'status', 'scheduled_time', 'started_at', 'finished_at',
+                'attacking_kingdoms', 'defending_kingdom', 'attack_squads', 'defense_squad',
+                'total_attack_stats', 'defense_stats', 'defense_buff', 'battle_results',
+                'money_transferred', 'exp_distributed', 'created_at'
+            ])
+            
+            self.check_table_structure(cursor, 'war_participations', [
+                'id', 'war_id', 'user_id', 'kingdom', 'role', 'player_stats',
+                'money_gained', 'money_lost', 'exp_gained', 'joined_at'
+            ])
             
             conn.close()
         except Exception as e:
             logger.error(f"❌ Error connecting to database: {e}")
+            self.tests_failed += 1
+    
+    def check_table_structure(self, cursor, table_name, required_columns):
+        """Check if table has required columns"""
+        try:
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            if all(col in columns for col in required_columns):
+                logger.info(f"✅ {table_name} table has correct structure")
+                self.tests_passed += 1
+            else:
+                missing = [col for col in required_columns if col not in columns]
+                logger.error(f"❌ {table_name} table missing columns: {missing}")
+                self.tests_failed += 1
+        except Exception as e:
+            logger.error(f"❌ Error checking {table_name} table structure: {e}")
             self.tests_failed += 1
     
     def test_bot_api(self):
