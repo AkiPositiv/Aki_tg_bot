@@ -36,7 +36,8 @@ async def test_shop_inventory():
     
     # Check if we have any users to test with
     async with AsyncSessionLocal() as session:
-        result = await session.execute("SELECT COUNT(*) FROM users")
+        from sqlalchemy import select, func
+        result = await session.execute(select(func.count(User.id)))
         user_count = result.scalar()
         print(f"Found {user_count} users in database")
     
