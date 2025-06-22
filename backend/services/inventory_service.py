@@ -1,4 +1,4 @@
-from sqlalchemy import select, and_, update, delete
+from sqlalchemy import select, and_, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from config.database import AsyncSessionLocal
 from models.item import Item, UserItem, ItemTypeEnum
