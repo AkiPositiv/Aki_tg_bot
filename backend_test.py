@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Telegram RPG Bot v2.0 - Test Script
-Tests the new Shop and Inventory system
+Telegram RPG Bot v3.0 - Test Script
+Tests the new Interactive Battle and Kingdom Wars systems
 """
 import os
 import sys
