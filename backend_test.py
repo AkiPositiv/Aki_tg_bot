@@ -203,144 +203,309 @@ class BotTester:
             logger.error(f"❌ Error testing bot API: {e}")
             self.tests_failed += 1
     
-    def test_item_database(self):
-        """Test item database"""
-        logger.info("Testing item database...")
+    def test_monster_system(self):
+        """Test monster system"""
+        logger.info("Testing monster system...")
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            # Check item count
-            cursor.execute("SELECT COUNT(*) FROM items")
-            item_count = cursor.fetchone()[0]
-            if item_count == 15:
-                logger.info(f"✅ Item database contains expected 15 items")
+            # Check if monsters exist in database
+            cursor.execute("SELECT COUNT(*) FROM monsters")
+            monster_count = cursor.fetchone()[0]
+            if monster_count > 0:
+                logger.info(f"✅ Monster database contains {monster_count} monsters")
                 self.tests_passed += 1
             else:
-                logger.error(f"❌ Expected 15 items, found {item_count}")
-                self.tests_failed += 1
+                logger.warning("⚠️ No monsters found in database. This might be normal if they are generated dynamically.")
             
-            # Check item types
-            cursor.execute("SELECT item_type, COUNT(*) FROM items GROUP BY item_type")
-            item_types = {row[0]: row[1] for row in cursor.fetchall()}
+            # Check monster types
+            cursor.execute("SELECT DISTINCT monster_type FROM monsters")
+            monster_types = [row[0] for row in cursor.fetchall()]
+            expected_types = ['weak', 'normal', 'strong', 'boss']
             
-            expected_types = {
-                'weapon': 4,
-                'armor': 4,
-                'consumable': 5,
-                'material': 2
-            }
+            if monster_types:
+                for monster_type in monster_types:
+                    if monster_type in expected_types:
+                        logger.info(f"✅ Monster type '{monster_type}' is valid")
+                        self.tests_passed += 1
+                    else:
+                        logger.error(f"❌ Invalid monster type: {monster_type}")
+                        self.tests_failed += 1
             
-            if all(item_types.get(k, 0) == v for k, v in expected_types.items()):
-                logger.info("✅ Item types distribution is correct")
+            # Test monster generation code by checking interactive battles
+            cursor.execute("SELECT COUNT(*) FROM interactive_battles WHERE monster_data IS NOT NULL")
+            monster_battles = cursor.fetchone()[0]
+            if monster_battles > 0:
+                logger.info(f"✅ Found {monster_battles} battles with monsters")
                 self.tests_passed += 1
-            else:
-                logger.error(f"❌ Item type distribution mismatch. Expected: {expected_types}, Found: {item_types}")
-                self.tests_failed += 1
-            
-            # Check rarities
-            cursor.execute("SELECT rarity, COUNT(*) FROM items GROUP BY rarity")
-            rarities = {row[0]: row[1] for row in cursor.fetchall()}
-            
-            if 'common' in rarities and 'rare' in rarities and 'legendary' in rarities:
-                logger.info("✅ Item rarities are correctly defined")
-                self.tests_passed += 1
-            else:
-                logger.error(f"❌ Missing rarities. Found: {rarities}")
-                self.tests_failed += 1
-            
-            # Check item properties
-            cursor.execute("PRAGMA table_info(items)")
-            columns = [row[1] for row in cursor.fetchall()]
-            required_properties = [
-                'strength_bonus', 'armor_bonus', 'hp_bonus', 'agility_bonus', 'mana_bonus',
-                'durability', 'price', 'level_required'
-            ]
-            
-            if all(prop in columns for prop in required_properties):
-                logger.info("✅ Item properties are correctly defined")
-                self.tests_passed += 1
-            else:
-                missing = [prop for prop in required_properties if prop not in columns]
-                logger.error(f"❌ Missing item properties: {missing}")
-                self.tests_failed += 1
+                
+                # Check monster data structure
+                cursor.execute("SELECT monster_data FROM interactive_battles WHERE monster_data IS NOT NULL LIMIT 1")
+                monster_data = cursor.fetchone()
+                if monster_data:
+                    try:
+                        monster_json = json.loads(monster_data[0])
+                        required_fields = ['name', 'level', 'strength', 'armor', 'hp', 'agility', 
+                                          'exp_reward', 'money_reward', 'type_emoji', 'difficulty_color']
+                        
+                        if all(field in monster_json for field in required_fields):
+                            logger.info("✅ Monster data structure is correct")
+                            self.tests_passed += 1
+                        else:
+                            missing = [field for field in required_fields if field not in monster_json]
+                            logger.error(f"❌ Monster data missing fields: {missing}")
+                            self.tests_failed += 1
+                    except json.JSONDecodeError:
+                        logger.error("❌ Monster data is not valid JSON")
+                        self.tests_failed += 1
             
             conn.close()
         except Exception as e:
-            logger.error(f"❌ Error testing item database: {e}")
+            logger.error(f"❌ Error testing monster system: {e}")
             self.tests_failed += 1
     
-    def test_shop_service(self):
-        """Test shop service functionality"""
-        logger.info("Testing shop service...")
+    def test_interactive_battle_system(self):
+        """Test interactive battle system"""
+        logger.info("Testing interactive battle system...")
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            # Check shop items
-            cursor.execute("SELECT COUNT(*) FROM items WHERE is_available_in_shop = 1 OR is_available_in_shop IS NULL")
-            shop_items = cursor.fetchone()[0]
-            if shop_items > 0:
-                logger.info(f"✅ Shop has {shop_items} items available")
-                self.tests_passed += 1
-            else:
-                logger.error("❌ No items available in shop")
-                self.tests_failed += 1
+            # Check battle modes
+            cursor.execute("SELECT DISTINCT mode FROM interactive_battles")
+            modes = [row[0] for row in cursor.fetchall()]
+            expected_modes = ['pve_interactive', 'pvp_interactive', 'auto']
             
-            # Check item categories
-            cursor.execute("SELECT DISTINCT item_type FROM items")
-            categories = [row[0] for row in cursor.fetchall()]
-            expected_categories = ['weapon', 'armor', 'consumable', 'material']
-            
-            if all(cat in categories for cat in expected_categories):
-                logger.info("✅ Shop categories are correctly defined")
-                self.tests_passed += 1
-            else:
-                missing = [cat for cat in expected_categories if cat not in categories]
-                logger.error(f"❌ Missing shop categories: {missing}")
-                self.tests_failed += 1
-            
-            conn.close()
-        except Exception as e:
-            logger.error(f"❌ Error testing shop service: {e}")
-            self.tests_failed += 1
-    
-    def test_inventory_service(self):
-        """Test inventory service functionality"""
-        logger.info("Testing inventory service...")
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # Check user_items table structure
-            cursor.execute("PRAGMA table_info(user_items)")
-            columns = [row[1] for row in cursor.fetchall()]
-            required_columns = ['user_id', 'item_id', 'quantity', 'is_equipped', 'current_durability']
-            
-            if all(col in columns for col in required_columns):
-                logger.info("✅ User_items table has correct structure")
-                self.tests_passed += 1
-            else:
-                missing = [col for col in required_columns if col not in columns]
-                logger.error(f"❌ User_items table missing columns: {missing}")
-                self.tests_failed += 1
-            
-            # Check foreign key relationships
-            try:
-                # This is a simplified check - ideally we'd check the actual FK constraints
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='user_items'")
-                if cursor.fetchone():
-                    logger.info("✅ User_items table has indexes (likely for foreign keys)")
+            for mode in modes:
+                if mode in expected_modes:
+                    logger.info(f"✅ Battle mode '{mode}' is valid")
                     self.tests_passed += 1
                 else:
-                    logger.warning("⚠️ User_items table might be missing indexes for foreign keys")
-            except Exception as e:
-                logger.error(f"❌ Error checking user_items indexes: {e}")
-                self.tests_failed += 1
+                    logger.error(f"❌ Invalid battle mode: {mode}")
+                    self.tests_failed += 1
+            
+            # Check battle phases
+            cursor.execute("SELECT DISTINCT phase FROM interactive_battles")
+            phases = [row[0] for row in cursor.fetchall()]
+            expected_phases = ['monster_encounter', 'attack_selection', 'dodge_selection', 'calculating', 'finished']
+            
+            for phase in phases:
+                if phase in expected_phases:
+                    logger.info(f"✅ Battle phase '{phase}' is valid")
+                    self.tests_passed += 1
+                else:
+                    logger.error(f"❌ Invalid battle phase: {phase}")
+                    self.tests_failed += 1
+            
+            # Check battle log structure
+            cursor.execute("SELECT battle_log FROM interactive_battles WHERE battle_log != '[]' LIMIT 1")
+            battle_log = cursor.fetchone()
+            if battle_log:
+                try:
+                    log_json = json.loads(battle_log[0])
+                    if isinstance(log_json, list) and len(log_json) > 0:
+                        logger.info("✅ Battle log structure is correct")
+                        self.tests_passed += 1
+                        
+                        # Check log entries
+                        if 'round' in log_json[0]:
+                            logger.info("✅ Battle log entries contain round information")
+                            self.tests_passed += 1
+                        else:
+                            logger.error("❌ Battle log entries missing round information")
+                            self.tests_failed += 1
+                    else:
+                        logger.warning("⚠️ Battle log is empty or not a list")
+                except json.JSONDecodeError:
+                    logger.error("❌ Battle log is not valid JSON")
+                    self.tests_failed += 1
+            
+            # Check completed battles
+            cursor.execute("SELECT COUNT(*) FROM interactive_battles WHERE phase = 'finished'")
+            finished_battles = cursor.fetchone()[0]
+            logger.info(f"ℹ️ Found {finished_battles} completed interactive battles")
+            
+            # Check battle timeout mechanism
+            cursor.execute("SELECT round_timeout FROM interactive_battles LIMIT 1")
+            timeout = cursor.fetchone()
+            if timeout and timeout[0] > 0:
+                logger.info(f"✅ Battle timeout is set to {timeout[0]} seconds")
+                self.tests_passed += 1
+            else:
+                logger.warning("⚠️ Battle timeout not set or zero")
             
             conn.close()
         except Exception as e:
-            logger.error(f"❌ Error testing inventory service: {e}")
+            logger.error(f"❌ Error testing interactive battle system: {e}")
+            self.tests_failed += 1
+    
+    def test_kingdom_wars_system(self):
+        """Test kingdom wars system"""
+        logger.info("Testing kingdom wars system...")
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Check if wars are scheduled
+            cursor.execute("SELECT COUNT(*) FROM kingdom_wars")
+            war_count = cursor.fetchone()[0]
+            if war_count > 0:
+                logger.info(f"✅ Found {war_count} kingdom wars in database")
+                self.tests_passed += 1
+            else:
+                logger.error("❌ No kingdom wars found in database")
+                self.tests_failed += 1
+            
+            # Check war statuses
+            cursor.execute("SELECT status, COUNT(*) FROM kingdom_wars GROUP BY status")
+            statuses = {row[0]: row[1] for row in cursor.fetchall()}
+            expected_statuses = ['scheduled', 'active', 'finished']
+            
+            for status in expected_statuses:
+                if status in statuses:
+                    logger.info(f"✅ Found {statuses[status]} wars with status '{status}'")
+                    self.tests_passed += 1
+                else:
+                    logger.warning(f"⚠️ No wars with status '{status}' found")
+            
+            # Check war types
+            cursor.execute("SELECT DISTINCT war_type FROM kingdom_wars")
+            war_types = [row[0] for row in cursor.fetchall()]
+            expected_types = ['kingdom_attack', 'siege']
+            
+            for war_type in war_types:
+                if war_type in expected_types:
+                    logger.info(f"✅ War type '{war_type}' is valid")
+                    self.tests_passed += 1
+                else:
+                    logger.error(f"❌ Invalid war type: {war_type}")
+                    self.tests_failed += 1
+            
+            # Check kingdoms
+            cursor.execute("SELECT DISTINCT defending_kingdom FROM kingdom_wars")
+            kingdoms = [row[0] for row in cursor.fetchall()]
+            expected_kingdoms = ['north', 'south', 'east', 'west']
+            
+            for kingdom in kingdoms:
+                if kingdom in expected_kingdoms:
+                    logger.info(f"✅ Kingdom '{kingdom}' is valid")
+                    self.tests_passed += 1
+                else:
+                    logger.error(f"❌ Invalid kingdom: {kingdom}")
+                    self.tests_failed += 1
+            
+            # Check war scheduling
+            today = datetime.now().date()
+            cursor.execute(
+                "SELECT COUNT(*) FROM kingdom_wars WHERE date(scheduled_time) = ?", 
+                (today.isoformat(),)
+            )
+            today_wars = cursor.fetchone()[0]
+            if today_wars > 0:
+                logger.info(f"✅ Found {today_wars} wars scheduled for today")
+                self.tests_passed += 1
+            else:
+                logger.warning("⚠️ No wars scheduled for today")
+            
+            # Check war times (should be at 8:00, 13:00, 18:00 Tashkent time)
+            cursor.execute("SELECT scheduled_time FROM kingdom_wars LIMIT 20")
+            war_times = [row[0] for row in cursor.fetchall()]
+            
+            tashkent_hours = set()
+            for war_time in war_times:
+                try:
+                    dt = datetime.fromisoformat(war_time.replace('Z', '+00:00'))
+                    tashkent_time = dt.astimezone(self.tashkent_tz)
+                    tashkent_hours.add(tashkent_time.hour)
+                except:
+                    # Skip invalid datetime formats
+                    pass
+            
+            expected_hours = {8, 13, 18}
+            for hour in expected_hours:
+                if hour in tashkent_hours:
+                    logger.info(f"✅ Wars are scheduled for {hour}:00 Tashkent time")
+                    self.tests_passed += 1
+                else:
+                    logger.warning(f"⚠️ No wars scheduled for {hour}:00 Tashkent time")
+            
+            # Check war participation
+            cursor.execute("SELECT COUNT(*) FROM war_participations")
+            participation_count = cursor.fetchone()[0]
+            logger.info(f"ℹ️ Found {participation_count} war participations")
+            
+            conn.close()
+        except Exception as e:
+            logger.error(f"❌ Error testing kingdom wars system: {e}")
+            self.tests_failed += 1
+    
+    def test_war_scheduler(self):
+        """Test war scheduler"""
+        logger.info("Testing war scheduler...")
+        try:
+            # Check if war_scheduler.py exists
+            scheduler_path = Path("/app/backend/war_scheduler.py")
+            if scheduler_path.exists():
+                logger.info("✅ War scheduler file exists")
+                self.tests_passed += 1
+            else:
+                logger.error("❌ War scheduler file not found")
+                self.tests_failed += 1
+            
+            # Check if scheduler is mentioned in bot_main.py
+            bot_main_path = Path("/app/backend/bot_main.py")
+            if bot_main_path.exists():
+                with open(bot_main_path, 'r') as f:
+                    bot_main_content = f.read()
+                    if "war_scheduler" in bot_main_content:
+                        logger.info("✅ War scheduler is imported in bot_main.py")
+                        self.tests_passed += 1
+                        
+                        if "war_scheduler.start()" in bot_main_content:
+                            logger.info("✅ War scheduler is started in bot_main.py")
+                            self.tests_passed += 1
+                        else:
+                            logger.error("❌ War scheduler is not started in bot_main.py")
+                            self.tests_failed += 1
+                    else:
+                        logger.error("❌ War scheduler is not imported in bot_main.py")
+                        self.tests_failed += 1
+            
+            # Check if scheduler is running by looking for scheduled wars
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Check for tomorrow's wars
+            tomorrow = (datetime.now() + timedelta(days=1)).date()
+            cursor.execute(
+                "SELECT COUNT(*) FROM kingdom_wars WHERE date(scheduled_time) = ?", 
+                (tomorrow.isoformat(),)
+            )
+            tomorrow_wars = cursor.fetchone()[0]
+            if tomorrow_wars > 0:
+                logger.info(f"✅ Found {tomorrow_wars} wars scheduled for tomorrow")
+                self.tests_passed += 1
+            else:
+                logger.warning("⚠️ No wars scheduled for tomorrow")
+            
+            conn.close()
+            
+            # Check for scheduler in process list
+            result = subprocess.run(
+                ["ps", "aux"], 
+                capture_output=True, 
+                text=True, 
+                check=True
+            )
+            if "apscheduler" in result.stdout.lower():
+                logger.info("✅ APScheduler is running (likely for war scheduling)")
+                self.tests_passed += 1
+            else:
+                logger.warning("⚠️ APScheduler not found in process list")
+            
+        except Exception as e:
+            logger.error(f"❌ Error testing war scheduler: {e}")
             self.tests_failed += 1
     
     def check_log_file(self):
