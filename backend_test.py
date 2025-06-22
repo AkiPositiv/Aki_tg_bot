@@ -523,18 +523,34 @@ class BotTester:
             # Check for critical errors
             error_keywords = ["ERROR", "CRITICAL", "Exception", "Error", "Failed"]
             errors_found = False
+            error_count = 0
             
             for line in log_content.splitlines():
                 if any(keyword in line for keyword in error_keywords):
-                    logger.error(f"❌ Error found in logs: {line}")
+                    error_count += 1
+                    if error_count <= 5:  # Limit to first 5 errors
+                        logger.error(f"❌ Error found in logs: {line}")
                     errors_found = True
             
-            if not errors_found:
+            if errors_found:
+                logger.error(f"❌ Found {error_count} errors in logs")
+                self.tests_failed += 1
+            else:
                 logger.info("✅ No critical errors found in logs")
                 self.tests_passed += 1
-            else:
-                self.tests_failed += 1
                 
+            # Check for v3.0 specific features in logs
+            v3_features = [
+                "Interactive Battle", "Kingdom War", "Monster", "War Scheduler"
+            ]
+            
+            for feature in v3_features:
+                if feature.lower() in log_content.lower():
+                    logger.info(f"✅ Found '{feature}' mentions in logs")
+                    self.tests_passed += 1
+                else:
+                    logger.warning(f"⚠️ No mentions of '{feature}' in logs")
+            
         except Exception as e:
             logger.error(f"❌ Error checking log file: {e}")
             self.tests_failed += 1
