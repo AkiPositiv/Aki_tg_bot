@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Telegram RPG Bot - Test Script
+Telegram RPG Bot v2.0 - Test Script
+Tests the new Shop and Inventory system
 """
 import os
 import sys
@@ -22,14 +23,14 @@ class BotTester:
     def __init__(self):
         self.bot_token = "1730744154:AAGxL3yNgmoN3LOZvOWdNGu6Wgxt81TacXE"
         self.db_path = "/app/backend/rpg_game.db"
-        self.log_path = "/app/backend/bot.log"
+        self.log_path = "/app/backend/bot_new.log"
         self.tests_passed = 0
         self.tests_failed = 0
         self.telegram_api = f"https://api.telegram.org/bot{self.bot_token}"
     
     def run_tests(self):
         """Run all tests"""
-        logger.info("Starting Telegram RPG Bot tests")
+        logger.info("Starting Telegram RPG Bot v2.0 tests")
         
         # Test bot process
         self.test_bot_process()
@@ -40,6 +41,14 @@ class BotTester:
         
         # Test bot API
         self.test_bot_api()
+        
+        # Test new shop and inventory system
+        self.test_item_database()
+        self.test_shop_service()
+        self.test_inventory_service()
+        
+        # Check logs for errors
+        self.check_log_file()
         
         # Print results
         logger.info(f"Tests completed: {self.tests_passed} passed, {self.tests_failed} failed")
@@ -98,6 +107,24 @@ class BotTester:
                 self.tests_passed += 1
             else:
                 logger.error("❌ Battles table not found")
+                self.tests_failed += 1
+            
+            # Check items table (NEW)
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='items'")
+            if cursor.fetchone():
+                logger.info("✅ Items table exists")
+                self.tests_passed += 1
+            else:
+                logger.error("❌ Items table not found")
+                self.tests_failed += 1
+            
+            # Check user_items table (NEW)
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_items'")
+            if cursor.fetchone():
+                logger.info("✅ User_items table exists")
+                self.tests_passed += 1
+            else:
+                logger.error("❌ User_items table not found")
                 self.tests_failed += 1
             
             # Check table structure
@@ -162,6 +189,146 @@ class BotTester:
                 
         except Exception as e:
             logger.error(f"❌ Error testing bot API: {e}")
+            self.tests_failed += 1
+    
+    def test_item_database(self):
+        """Test item database"""
+        logger.info("Testing item database...")
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Check item count
+            cursor.execute("SELECT COUNT(*) FROM items")
+            item_count = cursor.fetchone()[0]
+            if item_count == 15:
+                logger.info(f"✅ Item database contains expected 15 items")
+                self.tests_passed += 1
+            else:
+                logger.error(f"❌ Expected 15 items, found {item_count}")
+                self.tests_failed += 1
+            
+            # Check item types
+            cursor.execute("SELECT item_type, COUNT(*) FROM items GROUP BY item_type")
+            item_types = {row[0]: row[1] for row in cursor.fetchall()}
+            
+            expected_types = {
+                'weapon': 4,
+                'armor': 4,
+                'consumable': 5,
+                'material': 2
+            }
+            
+            if all(item_types.get(k, 0) == v for k, v in expected_types.items()):
+                logger.info("✅ Item types distribution is correct")
+                self.tests_passed += 1
+            else:
+                logger.error(f"❌ Item type distribution mismatch. Expected: {expected_types}, Found: {item_types}")
+                self.tests_failed += 1
+            
+            # Check rarities
+            cursor.execute("SELECT rarity, COUNT(*) FROM items GROUP BY rarity")
+            rarities = {row[0]: row[1] for row in cursor.fetchall()}
+            
+            if 'common' in rarities and 'rare' in rarities and 'legendary' in rarities:
+                logger.info("✅ Item rarities are correctly defined")
+                self.tests_passed += 1
+            else:
+                logger.error(f"❌ Missing rarities. Found: {rarities}")
+                self.tests_failed += 1
+            
+            # Check item properties
+            cursor.execute("PRAGMA table_info(items)")
+            columns = [row[1] for row in cursor.fetchall()]
+            required_properties = [
+                'strength_bonus', 'armor_bonus', 'hp_bonus', 'agility_bonus', 'mana_bonus',
+                'durability', 'price', 'level_required'
+            ]
+            
+            if all(prop in columns for prop in required_properties):
+                logger.info("✅ Item properties are correctly defined")
+                self.tests_passed += 1
+            else:
+                missing = [prop for prop in required_properties if prop not in columns]
+                logger.error(f"❌ Missing item properties: {missing}")
+                self.tests_failed += 1
+            
+            conn.close()
+        except Exception as e:
+            logger.error(f"❌ Error testing item database: {e}")
+            self.tests_failed += 1
+    
+    def test_shop_service(self):
+        """Test shop service functionality"""
+        logger.info("Testing shop service...")
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Check shop items
+            cursor.execute("SELECT COUNT(*) FROM items WHERE is_available_in_shop = 1 OR is_available_in_shop IS NULL")
+            shop_items = cursor.fetchone()[0]
+            if shop_items > 0:
+                logger.info(f"✅ Shop has {shop_items} items available")
+                self.tests_passed += 1
+            else:
+                logger.error("❌ No items available in shop")
+                self.tests_failed += 1
+            
+            # Check item categories
+            cursor.execute("SELECT DISTINCT item_type FROM items")
+            categories = [row[0] for row in cursor.fetchall()]
+            expected_categories = ['weapon', 'armor', 'consumable', 'material']
+            
+            if all(cat in categories for cat in expected_categories):
+                logger.info("✅ Shop categories are correctly defined")
+                self.tests_passed += 1
+            else:
+                missing = [cat for cat in expected_categories if cat not in categories]
+                logger.error(f"❌ Missing shop categories: {missing}")
+                self.tests_failed += 1
+            
+            conn.close()
+        except Exception as e:
+            logger.error(f"❌ Error testing shop service: {e}")
+            self.tests_failed += 1
+    
+    def test_inventory_service(self):
+        """Test inventory service functionality"""
+        logger.info("Testing inventory service...")
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Check user_items table structure
+            cursor.execute("PRAGMA table_info(user_items)")
+            columns = [row[1] for row in cursor.fetchall()]
+            required_columns = ['user_id', 'item_id', 'quantity', 'is_equipped', 'current_durability']
+            
+            if all(col in columns for col in required_columns):
+                logger.info("✅ User_items table has correct structure")
+                self.tests_passed += 1
+            else:
+                missing = [col for col in required_columns if col not in columns]
+                logger.error(f"❌ User_items table missing columns: {missing}")
+                self.tests_failed += 1
+            
+            # Check foreign key relationships
+            try:
+                # This is a simplified check - ideally we'd check the actual FK constraints
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='user_items'")
+                if cursor.fetchone():
+                    logger.info("✅ User_items table has indexes (likely for foreign keys)")
+                    self.tests_passed += 1
+                else:
+                    logger.warning("⚠️ User_items table might be missing indexes for foreign keys")
+            except Exception as e:
+                logger.error(f"❌ Error checking user_items indexes: {e}")
+                self.tests_failed += 1
+            
+            conn.close()
+        except Exception as e:
+            logger.error(f"❌ Error testing inventory service: {e}")
             self.tests_failed += 1
     
     def check_log_file(self):
