@@ -395,6 +395,30 @@ async def show_battle_stats(callback: CallbackQuery, user, is_registered: bool):
     await callback.answer()
 
 @router.callback_query(F.data == "training_battle")
+async def show_training_options(callback: CallbackQuery, user, is_registered: bool):
+    """Show training battle options"""
+    if not is_registered:
+        await callback.answer("Сначала нужно зарегистрироваться!")
+        return
+    
+    training_text = (
+        f"🤖 <b>Тренировочные бои</b>\n\n"
+        f"Выберите тип тренировки:\n\n"
+        f"⚔️ <b>Быстрый бой</b> - автоматический бой против ИИ\n"
+        f"🎯 <b>Интерактивный бой</b> - пошаговая битва с выбором действий\n\n"
+        f"💡 Интерактивные бои дают больше опыта!"
+    )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⚔️ Быстрый бой", callback_data="quick_training")],
+        [InlineKeyboardButton(text="🎯 Интерактивный бой", callback_data="pve_encounter")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="battle_menu")]
+    ])
+    
+    await callback.message.edit_text(training_text, reply_markup=keyboard)
+    await callback.answer()
+
+@router.callback_query(F.data == "quick_training")
 async def training_battle(callback: CallbackQuery, user, is_registered: bool):
     """Training battle against AI"""
     if not is_registered:
