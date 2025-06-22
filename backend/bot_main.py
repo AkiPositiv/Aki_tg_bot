@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Telegram RPG Bot - Main Entry Point
+Telegram RPG Bot - Main Entry Point v3.0
+Enhanced with Interactive Battles and Kingdom Wars
 """
 import asyncio
 import logging
@@ -19,6 +20,7 @@ from middlewares.auth import AuthMiddleware
 from middlewares.throttling import ThrottlingMiddleware
 from services.user_service import UserService
 from utils.logging_config import setup_logging
+from war_scheduler import war_scheduler
 
 async def main():
     """Main bot function"""
@@ -50,12 +52,19 @@ async def main():
         # Setup handlers
         setup_handlers(dp)
         
-        logger.info("Starting RPG Bot...")
+        # Start war scheduler
+        war_scheduler.start()
+        logger.info("Kingdom War Scheduler started")
+        
+        logger.info("Starting RPG Bot v3.0...")
         await dp.start_polling(bot, skip_updates=True)
         
     except Exception as e:
         logger.error(f"Error starting bot: {e}")
         sys.exit(1)
+    finally:
+        # Stop war scheduler on shutdown
+        war_scheduler.stop()
 
 if __name__ == "__main__":
     asyncio.run(main())
