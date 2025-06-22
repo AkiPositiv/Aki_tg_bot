@@ -26,10 +26,11 @@ class BotTester:
     def __init__(self):
         self.bot_token = "1730744154:AAGxL3yNgmoN3LOZvOWdNGu6Wgxt81TacXE"
         self.db_path = "/app/backend/rpg_game.db"
-        self.log_path = "/app/backend/bot_new.log"
+        self.log_path = "/app/backend/bot_v3.log"
         self.tests_passed = 0
         self.tests_failed = 0
         self.telegram_api = f"https://api.telegram.org/bot{self.bot_token}"
+        self.tashkent_tz = pytz.timezone('Asia/Tashkent')
     
     def run_tests(self):
         """Run all tests"""
