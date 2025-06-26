@@ -38,8 +38,6 @@ async def init_db():
         from models.item import Item, UserItem  
         from models.skill import Skill, UserSkill
         from models.battle import Battle
-        from models.dungeon import Dungeon, DungeonRun
-        from models.event import Event
         from models.monster import Monster
         from models.kingdom_war import KingdomWar, WarParticipation
         from models.interactive_battle import InteractiveBattle
