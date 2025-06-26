@@ -21,7 +21,7 @@ from middlewares.throttling import ThrottlingMiddleware
 from middlewares.war_block import WarBlockMiddleware
 from services.user_service import UserService
 from utils.logging_config import setup_logging
-from war_scheduler import war_scheduler, enhanced_war_scheduler
+from war_scheduler import enhanced_war_scheduler
 
 async def main():
     """Main bot function"""
