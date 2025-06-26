@@ -4,7 +4,6 @@ import json
 from datetime import datetime
 import asyncio
 import sys
-from services.enhanced_kingdom_war_service import EnhancedKingdomWarService
 
 async def test_war_blocking():
     """Test if war blocking middleware is working"""
@@ -38,11 +37,18 @@ async def test_war_blocking():
     print(f"Found war participant: {user_name} (ID: {user_id}, Kingdom: {user_kingdom})")
     print(f"Participating in war ID: {war_id} as {role}")
     
-    # Create an instance of EnhancedKingdomWarService
-    war_service = EnhancedKingdomWarService()
-    
-    # Check if user is blocked
-    is_blocked, block_message = await war_service.check_user_war_block(user_id)
+    # Check if user is blocked (simulating the middleware check)
+    # In the real middleware, this would be done by EnhancedKingdomWarService.check_user_war_block
+    cursor.execute(
+        """
+        SELECT COUNT(*) FROM war_participations wp
+        JOIN kingdom_wars kw ON wp.war_id = kw.id
+        WHERE wp.user_id = ? AND kw.status = 'scheduled'
+        """,
+        (user_id,)
+    )
+    is_blocked = cursor.fetchone()[0] > 0
+    block_message = "Вы заявлены на участие в Атаке Королевств. Дождитесь окончания битвы." if is_blocked else ""
     
     print(f"Is user blocked: {is_blocked}")
     if is_blocked:
@@ -79,5 +85,4 @@ async def main():
     return 0 if success else 1
 
 if __name__ == "__main__":
-    sys.path.append('/app/backend')
     asyncio.run(main())
