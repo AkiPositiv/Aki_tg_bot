@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Telegram RPG Bot v3.0 - Kingdom Wars Test Script
-Focuses on testing the newly implemented Kingdom Wars system
+Telegram RPG Bot v3.0 - Comprehensive Test Script
+Tests all implemented features of the Telegram RPG Bot system
 """
 import os
 import sys
