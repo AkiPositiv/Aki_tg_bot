@@ -496,6 +496,19 @@ async def training_battle(callback: CallbackQuery, user, is_registered: bool):
     await callback.answer()
 
 # Placeholder handlers for future features
+@router.callback_query(F.data.in_(["dungeon_menu", "skills_menu", "events", "leaderboards"]))
+async def placeholder_features(callback: CallbackQuery):
+    """Placeholder for future features"""
+    feature_names = {
+        "dungeon_menu": "Подземелья",
+        "skills_menu": "Навыки", 
+        "events": "События",
+        "leaderboards": "Таблица лидеров"
+    }
+    
+    feature_name = feature_names.get(callback.data, "Эта функция")
+    await callback.answer(f"{feature_name} будут добавлены в следующих обновлениях!", show_alert=True)
+
 @router.callback_query(F.data == "inventory")
 async def inventory_from_battle(callback: CallbackQuery, user, is_registered: bool):
     """Redirect to inventory from battle menu"""
