@@ -64,6 +64,9 @@ def battle_menu_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🛡️ Защита", callback_data="kingdom_defense")
     )
     builder.row(
+        InlineKeyboardButton(text="👑 Королевские битвы", callback_data="kingdom_wars")
+    )
+    builder.row(
         InlineKeyboardButton(text="📊 Статистика боев", callback_data="battle_stats"),
         InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")
     )
