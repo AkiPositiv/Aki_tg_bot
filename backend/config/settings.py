@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     DB_PATH: str = "./rpg_game.db"
     
     # War Settings
-    WAR_CHANNEL_ID: str = None  # ID канала для уведомлений о войнах
+    WAR_CHANNEL_ID: str = ""  # ID канала для уведомлений о войнах
     
     # Game Settings
     MAX_LEVEL: int = 100
