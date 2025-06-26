@@ -20,7 +20,7 @@ from middlewares.auth import AuthMiddleware
 from middlewares.throttling import ThrottlingMiddleware
 from services.user_service import UserService
 from utils.logging_config import setup_logging
-from war_scheduler import war_scheduler
+from war_scheduler import war_scheduler, enhanced_war_scheduler
 
 async def main():
     """Main bot function"""
