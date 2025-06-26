@@ -60,6 +60,10 @@ def battle_menu_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🤖 Тренировка", callback_data="training_battle")
     )
     builder.row(
+        InlineKeyboardButton(text="🎯 Интерактивный PvE", callback_data="enhanced_pve_encounter"),
+        InlineKeyboardButton(text="⚔️ Интерактивный PvP", callback_data="interactive_pvp")
+    )
+    builder.row(
         InlineKeyboardButton(text="🏰 Атака королевства", callback_data="kingdom_attack"),
         InlineKeyboardButton(text="🛡️ Защита", callback_data="kingdom_defense")
     )
