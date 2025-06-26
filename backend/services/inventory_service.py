@@ -208,8 +208,7 @@ class InventoryService:
         )
         equipped_items = result.scalars().all()
         
-        # Reset to base stats (this is simplified - in a real game you'd store base stats separately)
-        # For now, we'll just add the bonuses to current stats
+        # Calculate total bonuses from equipped items
         total_strength_bonus = 0
         total_armor_bonus = 0
         total_hp_bonus = 0
@@ -220,14 +219,54 @@ class InventoryService:
             await session.refresh(user_item, ['item'])
             item = user_item.item
             
-            total_strength_bonus += item.strength_bonus
-            total_armor_bonus += item.armor_bonus
-            total_hp_bonus += item.hp_bonus
-            total_agility_bonus += item.agility_bonus
-            total_mana_bonus += item.mana_bonus
+            total_strength_bonus += item.strength_bonus or 0
+            total_armor_bonus += item.armor_bonus or 0
+            total_hp_bonus += item.hp_bonus or 0
+            total_agility_bonus += item.agility_bonus or 0
+            total_mana_bonus += item.mana_bonus or 0
         
-        # Store equipment bonuses (we'd need to add these fields to User model)
-        # For now, this is a placeholder for the stat update logic
+        # For now, we need to extend the User model to store base stats and equipment bonuses
+        # Since this is a complex change, let's implement a simple solution:
+        # We'll store the current total stats (base + equipment) in the existing fields
+        
+        # Get base stats from level and distributed points
+        from config.settings import GameConstants
+        from utils.formulas import GameFormulas
+        
+        base_stats = GameConstants.BASE_STATS.copy()
+        stat_points = GameFormulas.stat_points_for_level(user.level)
+        
+        # This is simplified - in a real system you'd track base stats separately
+        # For now, we just ensure minimum stats with equipment bonuses
+        min_strength = base_stats['strength'] + total_strength_bonus
+        min_armor = base_stats['armor'] + total_armor_bonus
+        min_hp = base_stats['hp'] + total_hp_bonus
+        min_agility = base_stats['agility'] + total_agility_bonus
+        min_mana = base_stats['mana'] + total_mana_bonus
+        
+        # Apply bonuses if they would increase stats
+        if user.strength < min_strength:
+            user.strength = min_strength
+        if user.armor < min_armor:
+            user.armor = min_armor
+        if user.hp < min_hp:
+            old_max_hp = user.hp
+            user.hp = min_hp
+            # Proportionally adjust current HP
+            if old_max_hp > 0:
+                hp_ratio = user.current_hp / old_max_hp
+                user.current_hp = int(user.hp * hp_ratio)
+        if user.agility < min_agility:
+            user.agility = min_agility
+        if user.mana < min_mana:
+            old_max_mana = user.mana
+            user.mana = min_mana
+            # Proportionally adjust current mana
+            if old_max_mana > 0:
+                mana_ratio = user.current_mana / old_max_mana
+                user.current_mana = int(user.mana * mana_ratio)
+        
+        logger.info(f"Updated stats for user {user_id}: STR+{total_strength_bonus}, ARM+{total_armor_bonus}, HP+{total_hp_bonus}, AGI+{total_agility_bonus}, MANA+{total_mana_bonus}")
         
     async def get_inventory_stats(self, user_id: int) -> dict:
         """Get inventory statistics"""
