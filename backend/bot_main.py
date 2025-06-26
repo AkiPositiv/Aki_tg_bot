@@ -52,9 +52,10 @@ async def main():
         # Setup handlers
         setup_handlers(dp)
         
-        # Start war scheduler
-        war_scheduler.start()
-        logger.info("Kingdom War Scheduler started")
+        # Start enhanced war scheduler
+        enhanced_war_scheduler.set_bot(bot)
+        enhanced_war_scheduler.start()
+        logger.info("Enhanced Kingdom War Scheduler started")
         
         logger.info("Starting RPG Bot v3.0...")
         await dp.start_polling(bot, skip_updates=True)
