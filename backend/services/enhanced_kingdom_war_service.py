@@ -649,3 +649,25 @@ class EnhancedKingdomWarService:
                 summaries.append(summary)
             
             return "\n".join(summaries)
+    
+    async def get_scheduled_wars(self, date: datetime = None) -> List[KingdomWar]:
+        """Get scheduled wars for a date"""
+        if date is None:
+            date = datetime.utcnow()
+        
+        # Get wars for the date
+        start_of_day = datetime.combine(date.date(), datetime.min.time())
+        end_of_day = start_of_day + timedelta(days=1)
+        
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(KingdomWar).where(
+                    and_(
+                        KingdomWar.scheduled_time >= start_of_day,
+                        KingdomWar.scheduled_time < end_of_day,
+                        KingdomWar.status == WarStatusEnum.scheduled
+                    )
+                ).order_by(KingdomWar.scheduled_time)
+            )
+            
+            return result.scalars().all()
