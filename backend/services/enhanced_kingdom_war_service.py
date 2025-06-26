@@ -1,6 +1,7 @@
 from sqlalchemy import select, and_, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from config.database import AsyncSessionLocal
+from config.settings import settings
 from models.kingdom_war import KingdomWar, WarParticipation, WarStatusEnum, WarTypeEnum
 from models.user import User, KingdomEnum
 from services.user_service import UserService
@@ -17,7 +18,7 @@ class EnhancedKingdomWarService:
         self.user_service = UserService()
         self.tashkent_tz = pytz.timezone('Asia/Tashkent')
         self.war_times = [8, 13, 18]
-        self.war_channel_id = None  # Will be set when war channel is created
+        self.war_channel_id = settings.WAR_CHANNEL_ID
     
     async def schedule_daily_wars(self, date: datetime):
         """Schedule wars with 30-minute advance notifications"""
