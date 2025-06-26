@@ -496,12 +496,11 @@ async def training_battle(callback: CallbackQuery, user, is_registered: bool):
     await callback.answer()
 
 # Placeholder handlers for future features
-@router.callback_query(F.data.in_(["dungeon_menu", "shop_menu", "inventory", "skills_menu", "events", "leaderboards"]))
+@router.callback_query(F.data.in_(["dungeon_menu", "inventory", "skills_menu", "events", "leaderboards"]))
 async def placeholder_features(callback: CallbackQuery):
     """Placeholder for future features"""
     feature_names = {
         "dungeon_menu": "Подземелья",
-        "shop_menu": "Магазин", 
         "inventory": "Инвентарь",
         "skills_menu": "Навыки",
         "events": "События",
@@ -510,3 +509,14 @@ async def placeholder_features(callback: CallbackQuery):
     
     feature_name = feature_names.get(callback.data, "Эта функция")
     await callback.answer(f"{feature_name} будут добавлены в следующих обновлениях!", show_alert=True)
+
+@router.callback_query(F.data == "shop_menu")
+async def shop_menu_from_battle(callback: CallbackQuery, user, is_registered: bool):
+    """Redirect to shop menu from battle menu"""
+    if not is_registered:
+        await callback.answer("Сначала нужно зарегистрироваться!")
+        return
+    
+    # Import and use shop handler
+    from handlers.shop import show_shop_menu
+    await show_shop_menu(callback, user, is_registered)
