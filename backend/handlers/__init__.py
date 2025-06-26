@@ -5,6 +5,7 @@ from handlers.battle import router as battle_router
 from handlers.shop import router as shop_router
 from handlers.inventory import router as inventory_router
 from handlers.interactive_battle import router as interactive_battle_router
+from handlers.kingdom_war import router as kingdom_war_router
 
 def setup_handlers(dp: Dispatcher):
     """Setup all handlers"""
@@ -14,3 +15,4 @@ def setup_handlers(dp: Dispatcher):
     dp.include_router(shop_router)
     dp.include_router(inventory_router)
     dp.include_router(interactive_battle_router)
+    dp.include_router(kingdom_war_router)
