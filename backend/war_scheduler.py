@@ -190,13 +190,66 @@ class EnhancedKingdomWarScheduler:
     async def restore_participants(self, war_hour: int):
         """Восстановить HP/MP участников через 5 минут после войны"""
         try:
-            # Найти завершённые войны этого часа и восстановить участников
-            logger.info(f"Restoring participants for wars that ended at {war_hour}:00")
+            from datetime import datetime, timedelta
             
-            # TODO: Implement participant restoration
-            # recent_wars = await self.war_service.get_recent_finished_wars(war_hour)
-            # for war in recent_wars:
-            #     await self.war_service.restore_war_participants(war.id)
+            # Найти завершённые войны этого часа и восстановить участников
+            end_time = datetime.now(self.tashkent_tz).replace(hour=war_hour, minute=5, second=0)
+            
+            # Get recently finished wars
+            from config.database import AsyncSessionLocal
+            from models.kingdom_war import KingdomWar, WarParticipation, WarStatusEnum
+            from models.user import User
+            from sqlalchemy import select, and_
+            
+            async with AsyncSessionLocal() as session:
+                # Find wars that finished around this time
+                search_time_start = end_time - timedelta(minutes=10)
+                search_time_end = end_time + timedelta(minutes=10)
+                
+                finished_wars = await session.execute(
+                    select(KingdomWar).where(
+                        and_(
+                            KingdomWar.status == WarStatusEnum.finished,
+                            KingdomWar.finished_at >= search_time_start,
+                            KingdomWar.finished_at <= search_time_end
+                        )
+                    )
+                )
+                
+                wars_list = finished_wars.scalars().all()
+                total_restored = 0
+                
+                for war in wars_list:
+                    # Get all participants
+                    participants = await session.execute(
+                        select(WarParticipation).where(WarParticipation.war_id == war.id)
+                    )
+                    
+                    for participation in participants.scalars():
+                        # Restore HP and MP to full
+                        user = await session.get(User, participation.user_id)
+                        if user:
+                            user.current_hp = user.hp
+                            user.current_mana = user.mana
+                            total_restored += 1
+                
+                await session.commit()
+                
+                if total_restored > 0:
+                    logger.info(f"Restored HP/MP for {total_restored} war participants")
+                    
+                    # Send notification to war channel if configured
+                    if self.bot and self.war_service.war_channel_id:
+                        restoration_message = (
+                            f"🩹 **ВОССТАНОВЛЕНИЕ УЧАСТНИКОВ**\n\n"
+                            f"⚡ Восстановлено здоровье и мана у {total_restored} участников войн\n"
+                            f"🕐 Время: {end_time.strftime('%H:%M')} (Ташкентское время)\n\n"
+                            f"Все участники готовы к новым сражениям!"
+                        )
+                        try:
+                            await self.bot.send_message(self.war_service.war_channel_id, restoration_message)
+                        except Exception as e:
+                            logger.error(f"Error sending restoration notification: {e}")
             
         except Exception as e:
             logger.error(f"Error restoring participants for {war_hour}:00 wars: {e}")
