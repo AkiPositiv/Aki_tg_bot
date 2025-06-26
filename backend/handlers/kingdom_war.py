@@ -334,16 +334,122 @@ async def cmd_war_result(message, user, is_registered: bool):
     war_service = EnhancedKingdomWarService()
     
     # Get user's latest war result
-    # This would be implemented to fetch the latest war participation
+    from config.database import AsyncSessionLocal
+    from models.kingdom_war import WarParticipation, KingdomWar, WarStatusEnum
+    from sqlalchemy import select, desc, and_
     
-    await message.reply(
-        f"📊 **Результат последней войны**\n\n"
-        f"У вас пока нет участий в войнах королевств.\n\n"
-        f"Чтобы принять участие:\n"
-        f"1. Перейдите в меню битв\n"
-        f"2. Выберите 'Королевские битвы'\n"
-        f"3. Запишитесь на атаку или защиту",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🏰 Королевские битвы", callback_data="kingdom_wars")]
-        ])
-    )
+    async with AsyncSessionLocal() as session:
+        # Get user's latest war participation
+        latest_participation = await session.execute(
+            select(WarParticipation)
+            .join(KingdomWar)
+            .where(
+                and_(
+                    WarParticipation.user_id == user.id,
+                    KingdomWar.status == WarStatusEnum.finished
+                )
+            )
+            .order_by(desc(WarParticipation.joined_at))
+            .limit(1)
+        )
+        
+        participation = latest_participation.scalar_one_or_none()
+        
+        if not participation:
+            await message.reply(
+                f"📊 **Результат последней войны**\n\n"
+                f"У вас пока нет участий в войнах королевств.\n\n"
+                f"Чтобы принять участие:\n"
+                f"1. Перейдите в меню битв\n"
+                f"2. Выберите 'Королевские битвы'\n"
+                f"3. Запишитесь на атаку или защиту",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🏰 Королевские битвы", callback_data="kingdom_wars")]
+                ])
+            )
+            return
+        
+        # Get war details
+        war = await session.get(KingdomWar, participation.war_id)
+        
+        if not war:
+            await message.reply("Ошибка: война не найдена.")
+            return
+        
+        # Create result message
+        from config.settings import GameConstants
+        import pytz
+        
+        war_time = war.started_at.astimezone(pytz.timezone('Asia/Tashkent'))
+        kingdom_info = GameConstants.KINGDOMS.get(participation.kingdom, {})
+        
+        result_text = (
+            f"📊 **Результат последней войны**\n\n"
+            f"🗓️ **Дата:** {war_time.strftime('%d.%m.%Y в %H:%M')}\n"
+            f"🏰 **Ваше королевство:** {kingdom_info.get('emoji', '🏰')} {kingdom_info.get('name', participation.kingdom)}\n"
+            f"⚔️ **Роль:** {'Атакующий' if participation.role == 'attacker' else 'Защитник'}\n\n"
+        )
+        
+        # War outcome
+        battle_results = war.get_battle_results()
+        if battle_results:
+            if participation.role == 'attacker':
+                # Find result for this user's kingdom
+                user_result = None
+                for result in battle_results:
+                    if result.get('attacker') == participation.kingdom:
+                        user_result = result
+                        break
+                
+                if user_result:
+                    if user_result['result'] == 'victory':
+                        result_text += "🎉 **Результат:** ПОБЕДА!\n"
+                    elif user_result['result'] == 'defeat':
+                        result_text += "❌ **Результат:** Поражение\n"
+                    else:
+                        result_text += "⏰ **Результат:** Опоздание\n"
+                else:
+                    result_text += "❓ **Результат:** Неизвестно\n"
+            else:
+                # Defender - check if defense held
+                defending_kingdom = war.defending_kingdom
+                total_damage = 0
+                for result in battle_results:
+                    total_damage += result.get('damage', 0)
+                
+                defense_hp = sum([war.get_defense_stats().get('hp', 0)])
+                if total_damage >= defense_hp:
+                    result_text += "❌ **Результат:** Оборона пробита\n"
+                else:
+                    result_text += "🛡️ **Результат:** Успешная оборона!\n"
+        else:
+            result_text += "🕊️ **Результат:** Никто не атаковал\n"
+        
+        # Personal rewards/losses
+        if participation.money_gained > 0:
+            result_text += f"💰 **Получено золота:** +{participation.money_gained}\n"
+        elif participation.money_lost > 0:
+            result_text += f"💸 **Потеряно золота:** -{participation.money_lost}\n"
+        
+        if participation.exp_gained > 0:
+            result_text += f"⭐ **Получено опыта:** +{participation.exp_gained}\n"
+        
+        # Player stats at time of war
+        player_stats = participation.get_player_stats()
+        if player_stats:
+            result_text += (
+                f"\n**Ваши характеристики в войне:**\n"
+                f"💪 Сила: {player_stats.get('strength', 0)}\n"
+                f"🛡️ Броня: {player_stats.get('armor', 0)}\n"
+                f"❤️ Здоровье: {player_stats.get('hp', 0)}\n"
+                f"⚡ Ловкость: {player_stats.get('agility', 0)}\n"
+                f"🔮 Мана: {player_stats.get('mana', 0)}"
+            )
+        
+        await message.reply(
+            result_text,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🏰 Королевские битвы", callback_data="kingdom_wars")],
+                [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+            ])
+        )
