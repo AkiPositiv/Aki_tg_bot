@@ -18,6 +18,7 @@ from config.database import init_db
 from handlers import setup_handlers
 from middlewares.auth import AuthMiddleware
 from middlewares.throttling import ThrottlingMiddleware
+from middlewares.war_block import WarBlockMiddleware
 from services.user_service import UserService
 from utils.logging_config import setup_logging
 from war_scheduler import war_scheduler, enhanced_war_scheduler
