@@ -64,8 +64,8 @@ async def main():
         logger.error(f"Error starting bot: {e}")
         sys.exit(1)
     finally:
-        # Stop war scheduler on shutdown
-        war_scheduler.stop()
+        # Stop enhanced war scheduler on shutdown
+        enhanced_war_scheduler.stop()
 
 if __name__ == "__main__":
     asyncio.run(main())
