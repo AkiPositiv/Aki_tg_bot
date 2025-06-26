@@ -84,16 +84,54 @@ class EnhancedKingdomWarScheduler:
             if not self.bot:
                 logger.warning("Bot not set for notifications")
                 return
+            
+            # Get wars for this hour
+            from datetime import datetime
+            now = datetime.now(self.tashkent_tz)
+            wars_today = await self.war_service.get_scheduled_wars(now)
+            
+            war_announcements = []
+            for war in wars_today:
+                war_time_tashkent = war.scheduled_time.astimezone(self.tashkent_tz)
+                if war_time_tashkent.hour == war_hour:
+                    war_announcements.append(war)
+            
+            if not war_announcements:
+                return
+            
+            # Create notification message
+            notification_text = (
+                f"⚠️ **УВЕДОМЛЕНИЕ О ВОЙНЕ** ⚠️\n\n"
+                f"🕐 До начала войны: **30 минут**\n"
+                f"🏰 Время начала: **{war_hour}:00** (Ташкентское время)\n\n"
+                f"**Участвующие королевства:**\n"
+            )
+            
+            for war in war_announcements:
+                from config.settings import GameConstants
+                kingdom_info = GameConstants.KINGDOMS.get(war.defending_kingdom, {})
+                emoji = kingdom_info.get('emoji', '🏰')
+                name = kingdom_info.get('name', war.defending_kingdom)
+                notification_text += f"🛡️ **{emoji} {name}** - ожидает нападения\n"
+            
+            notification_text += (
+                f"\n💡 **Как участвовать:**\n"
+                f"🗡️ Атакуйте вражеские королевства\n"
+                f"🛡️ Защищайте своё королевство\n"
+                f"💰 Получайте 40% золота побеждённых\n\n"
+                f"⏰ **Подготовьтесь к битве!**"
+            )
+            
+            # Send to war channel if configured
+            if self.war_service.war_channel_id:
+                try:
+                    await self.bot.send_message(self.war_service.war_channel_id, notification_text)
+                    logger.info(f"Pre-war notification sent for {war_hour}:00 war")
+                except Exception as e:
+                    logger.error(f"Error sending war notification to channel: {e}")
+            else:
+                logger.warning("War channel ID not configured")
                 
-            # Здесь будет код для отправки уведомлений в War Channel
-            # Пока что просто логируем
-            logger.info(f"Pre-war notification for {war_hour}:00 war")
-            
-            # TODO: Implement war channel notifications
-            # war_channel_message = await self.war_service.get_pre_war_announcement(war_hour)
-            # if war_channel_message and self.war_service.war_channel_id:
-            #     await self.bot.send_message(self.war_service.war_channel_id, war_channel_message)
-            
         except Exception as e:
             logger.error(f"Error sending pre-war notifications for {war_hour}:00: {e}")
     
