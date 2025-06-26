@@ -9,6 +9,10 @@ from models.skill import Skill, SkillRankEnum, SkillTypeEnum, TargetTypeEnum
 
 async def init_skills_data():
     """Initialize basic skills"""
+    # Initialize database first to create tables
+    from config.database import init_db
+    await init_db()
+    
     async with AsyncSessionLocal() as session:
         # Check if skills already exist
         existing_skills = await session.execute(select(func.count(Skill.id)))
