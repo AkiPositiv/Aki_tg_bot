@@ -49,6 +49,8 @@ async def main():
         dp.callback_query.middleware(AuthMiddleware(user_service))
         dp.message.middleware(ThrottlingMiddleware(settings.RATE_LIMIT))
         dp.callback_query.middleware(ThrottlingMiddleware(settings.RATE_LIMIT))
+        dp.message.middleware(WarBlockMiddleware())
+        dp.callback_query.middleware(WarBlockMiddleware())
         
         # Setup handlers
         setup_handlers(dp)
